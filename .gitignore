@@ -1,0 +1,10 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# configuration
+configuration.json
+
+# venv
+/venv
+
+#.idea
+/.idea
