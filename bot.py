@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHandler, Filters
 from telegram import ReplyKeyboardMarkup
 import io
+import sqlite3
 from datetime import datetime
 plt.switch_backend('Agg')
 
@@ -25,12 +26,14 @@ reply_keyboard = [['Pressure', 'Graph']]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
 
 CHOOSING, PRESSURE = range(2)
-list_measurements = []
-tt = [[120, 60], [140, 70], [150, 90]]
 
 
 def split_message(text):
-    return map(int, text.split(' '))
+    list_enter = text.split(' ')
+    if len(list_enter) == 2 and all(map(lambda c: c.isdigit(), list_enter)):
+        return True, map(int, list_enter)
+    else:
+        return False, ''
 
 
 def start(update, context):
@@ -47,10 +50,24 @@ def start(update, context):
 
 
 def graph(update, context):
-    y1, y2, x = zip(*list_measurements)
+    chat_id = update.message['chat']['id']
+
+    connection = sqlite3.connect('data.db')
+    cursor = connection.cursor()
+    sql = "SELECT systolic, diastolic, date FROM measurements WHERE id_chat = ? ORDER BY id"
+    try:
+        cursor.execute(sql, (chat_id,))
+    except Exception as e:
+        print(e)
+
+    y1, y2, x = zip(*cursor)
+    cursor.close()
+
+    # y1, y2, x = zip(*cursor)
     update.message.reply_text(
         "Your graph: "
     )
+    x = list(map(lambda y: datetime.strptime(y,  "%Y-%m-%d %H:%M:%S.%f"), x))
     plt.plot(x, y1, marker='o', label="systolic")
     plt.plot(x, y2, marker='^', label="diastolic")
     plt.gcf().autofmt_xdate()
@@ -59,9 +76,10 @@ def graph(update, context):
     plt.savefig(buffer, format='png')
     buffer.seek(0)
     context.bot.send_photo(
-        chat_id=update.message['chat']['id'],
+        chat_id=chat_id,
         photo=buffer
     )
+    plt.clf()
 
     return CHOOSING
 
@@ -77,10 +95,27 @@ def enter_pressure(update, context):
 
 def pressure(update, context):
 
-    measurement = list(split_message(update.message['text']))
+    connection = sqlite3.connect('data.db')
+    cursor = connection.cursor()
+    sql = "INSERT INTO measurements (id_chat, systolic, diastolic, date) VALUES (?, ?, ?, ?)"
+
+    measurement = [update.message['chat']['id']]
+    check, data = split_message(update.message['text'])
+    if check:
+        measurement.extend(data)
+    else:
+        update.message.reply_text(
+            "Invalid enter"
+        )
+        return CHOOSING
+
     measurement.append(datetime.now())
-    list_measurements.append(measurement)
-    print(list_measurements)
+    try:
+        cursor.execute(sql, tuple(measurement))
+    except Exception as e:
+        print(e)
+    connection.commit()
+    cursor.close()
 
     update.message.reply_text(
         'Fix it.'
@@ -98,7 +133,11 @@ def end(update, context):
 
 
 def main():
-    updater = Updater(conf['TOKEN'], request_kwargs=conf['REQUEST_KWARGS'], use_context=True)
+    updater = Updater(
+        conf['TOKEN'],
+        request_kwargs=conf['REQUEST_KWARGS'],
+        use_context=True
+    )
     dp = updater.dispatcher
 
     conv_handler = ConversationHandler(
