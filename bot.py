@@ -1,14 +1,10 @@
 import json
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from matplotlib.colors import LinearSegmentedColormap, Normalize
 from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHandler, Filters
 from telegram import ReplyKeyboardMarkup
-import io
-import sqlite3
-from datetime import datetime, timedelta
-plt.switch_backend('Agg')
+from datetime import datetime
 
+from graphs import paint_zones, paint_general
+from backend import get_data, set_data
 
 """
 Get configuration
@@ -32,9 +28,7 @@ markup = ReplyKeyboardMarkup(
 )
 
 CHOOSING, PRESSURE = range(2)
-edge_syst = [40, 100, 120, 130, 140, 150, 160, 170, 220]
-edge_diast = [40, 55, 80, 85, 90, 95, 100, 110, 120]
-colors = ['#00FFFF', '#00FFFF', '#00FF00', '#FFFF00', '#FFFF00', '#FFA500', '#FFA500', '#FF0000', '#FF0000']
+list_graph = {'General': paint_general, 'Zones': paint_zones}
 
 
 def split_message(text):
@@ -58,95 +52,36 @@ def start(update, context):
     return CHOOSING
 
 
-def get_cmap(high, low, edges, name):
-
-    def get_edge(value):
-        return (value - low)/(high - low)
-
-    colors_cmap = []
-    for n, edge in enumerate(edges):
-        colors_cmap.append((get_edge(edge), colors[n]))
-    cmap = LinearSegmentedColormap.from_list('{0}'.format(name), colors_cmap, N=729)
-    return cmap
-
-
-def paint_graph(x, y1, y2):
-
-    plt.figure(figsize=(12, 6))
-
-    # Plot lines
-    plt.plot(x, y1, '#D3D3D3', zorder=1)
-    plt.plot(x, y2, '#D3D3D3', zorder=1)
-
-    # Systolic points
-    one = plt.scatter(
-        x, y1, c=y1, s=50,
-        cmap=get_cmap(220, 40, edge_syst, 'one'),
-        norm=Normalize(vmin=40, vmax=220),
-        edgecolors='black', zorder=2
-    )
-    # Diastolic points
-    two = plt.scatter(
-        x, y2, c=y2, s=50,
-        cmap=get_cmap(120, 40, edge_diast, 'two'),
-        norm=Normalize(vmin=40, vmax=120),
-        edgecolors='black', zorder=2
-    )
-
-    # Set two colorbar right
-    cbar_1 = plt.colorbar(one)
-    cbar_1.set_label("systolic edges")
-    cbar_2 = plt.colorbar(two)
-    cbar_2.set_label("diastolic edges")
-
-    # Set axis limit
-    plt.ylim(40, 220)
-    plt.xlim(min(x).date(), (max(x) + timedelta(days=1)).date())
-
-    ax = plt.gca()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    ax.xaxis.set_major_locator(mdates.DayLocator())
-    plt.grid(True)
-    plt.gcf().autofmt_xdate()
-
-
 def graph(update, context):
 
     chat_id = update.message['chat']['id']
 
-    connection = sqlite3.connect('data.db')
-    cursor = connection.cursor()
-    sql = "SELECT systolic, diastolic, date FROM measurements WHERE id_chat = ? ORDER BY id;"
-    try:
-        cursor.execute(sql, (chat_id,))
-    except Exception as e:
+    error, *data = get_data(chat_id)
+
+    if error:
         update.message.reply_text(
-            'Error: {0}'.format(e)
+            'Error: {0}'.format(error)
         )
         return CHOOSING
 
-    y1, y2, x = zip(*cursor)
-    cursor.close()
-
     update.message.reply_text(
-        "Your graph: ",
+        "Your graphs: ",
         reply_markup=markup
     )
-    x = list(map(lambda y: datetime.strptime(y,  "%Y-%m-%d %H:%M:%S.%f"), x))
 
-    paint_graph(x, y1, y2)
+    for name, func in list_graph.items():
 
-    # Put graph in buffer
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    context.bot.send_photo(
-        chat_id=chat_id,
-        photo=buffer
-    )
+        buffer = func(*data)
 
-    # Close plot
-    plt.close()
+        update.message.reply_text(
+            f"{name}: ",
+            reply_markup=markup
+        )
+
+        context.bot.send_photo(
+            chat_id=chat_id,
+            photo=buffer
+        )
 
     return CHOOSING
 
@@ -162,10 +97,6 @@ def enter_pressure(update, context):
 
 def pressure(update, context):
 
-    connection = sqlite3.connect('data.db')
-    cursor = connection.cursor()
-    sql = "INSERT INTO measurements (id_chat, systolic, diastolic, date) VALUES (?, ?, ?, ?)"
-
     measurement = [update.message['chat']['id']]
     check, data = split_message(update.message['text'])
     if check:
@@ -178,16 +109,14 @@ def pressure(update, context):
         return CHOOSING
 
     measurement.append(datetime.now())
-    try:
-        cursor.execute(sql, tuple(measurement))
-    except Exception as e:
+
+    error = set_data(measurement)
+
+    if error:
         update.message.reply_text(
-            'Error: {0}'.format(e)
+            'Error: {0}'.format(error)
         )
         return CHOOSING
-
-    connection.commit()
-    cursor.close()
 
     update.message.reply_text(
         'Fix it.',
@@ -198,6 +127,7 @@ def pressure(update, context):
 
 
 def end(update, context):
+
     update.message.reply_text(
         "Good buy"
     )

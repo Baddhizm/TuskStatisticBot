@@ -14,3 +14,6 @@ configuration.json
 
 #.idea
 /.idea
+
+# .pyc
+/__pycache__
