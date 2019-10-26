@@ -22,6 +22,10 @@ def get_data(chat_id):
 
 
 def set_data(measurement):
+    """
+    :param measurement:
+    :return:
+    """
 
     error = False
     connection = sqlite3.connect('data.db')

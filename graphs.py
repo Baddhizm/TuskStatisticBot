@@ -1,13 +1,63 @@
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.colors import LinearSegmentedColormap, Normalize
+from matplotlib.gridspec import GridSpec
 import io
 from datetime import timedelta
 plt.switch_backend('Agg')
 
-edge_syst = [40, 100, 120, 130, 140, 150, 160, 170, 220]
-edge_diast = [40, 55, 80, 85, 90, 95, 100, 110, 120]
-colors = ['#00FFFF', '#00FFFF', '#00FF00', '#FFFF00', '#FFFF00', '#FFA500', '#FFA500', '#FF0000', '#FF0000']
+edge_syst = [90, 120, 140, 160, 220]
+edge_diast = [60, 80, 90, 100, 110]
+colors = ['#478bca', '#77bb66', '#f5e042', '#f9a648', '#f1444a']
+names_bar = [
+    'LOW', 'NORMAL',
+    'PRE \nHYPERTENSION',
+    'HIGH: \nSTAGE 1 \nHYPERTENSION',
+    'HIGH: \nSTAGE 2 \nHYPERTENSION'
+]
+
+
+def paint_zones(x, y1, y2):
+
+    zones = [0]*5
+    edges = list(zip(edge_diast, edge_syst))
+    for i in range(len(x)):
+        for n, (low, high) in enumerate(edges):
+            if y2[i] <= low and y1[i] <= high:
+                zones[n] += 1
+                break
+            else:
+                continue
+        else:
+            zones[4] += 1
+
+    x_max = len(x)
+
+    fig = plt.figure(figsize=(12, 6))
+
+    gs = GridSpec(1, 5, figure=fig, wspace=0.5)
+    fig.add_subplot(gs[0, :-3])
+    plt.scatter(y2, y1, c='k', s=5, zorder=2)
+    plt.ylim(40, 220)
+    plt.xlim(40, 110)
+    for n, i in enumerate(colors):
+        # colored zone
+        plt.axvspan(
+            0, edge_diast[n], 0.0, (edge_syst[n] - 40)/(220 - 40),
+            facecolor=i, zorder=-1 - 2 * n
+        )
+        # white zone
+        plt.axvspan(
+            0, edge_diast[n] + 0.96, 0.0, (edge_syst[n] - 40)/(220 - 40) + 0.008,
+            facecolor='#FFFFFF', zorder=-1 - (2 * n + 1)
+        )
+
+    fig.add_subplot(gs[0, -3:])
+    plt.tick_params(labelsize=8)
+    zones = [i * 100 / x_max for i in zones]
+    plt.bar(names_bar, zones, width=0.6, color=colors, edgecolor='k')
+
+    return put_in_buffer()
 
 
 def get_cmap(high, low, edges, name):
@@ -18,85 +68,37 @@ def get_cmap(high, low, edges, name):
     colors_cmap = []
     for n, edge in enumerate(edges):
         colors_cmap.append((get_edge(edge), colors[n]))
-    cmap = LinearSegmentedColormap.from_list('{0}'.format(name), colors_cmap, N=729)
+    cmap = LinearSegmentedColormap.from_list('{0}'.format(name), colors_cmap, N=525)
     return cmap
 
 
-def paint_zones(x, y1, y2):
-
-    zones = [0]*5
-
-    edges = [[60, 90], [80, 120], [90, 140], [100, 160]]
-    for i in range(len(x)):
-        for n, (low, high) in enumerate(edges):
-            if y2[i] <= low and y1[i] <= high:
-                zones[n] += 1
-                break
-            else:
-                continue
-        else:
-            zones[n + 1] += 1
-
-    names = ['LOW', 'NORMAL', 'PRE \nHYPERTENSION', 'HIGH: \nSTAGE 1 \nHYPERTENSION', 'HIGH: \nSTAGE 2 \nHYPERTENSION']
-    colors = ['#478bca', '#77bb66', '#f5e042', '#f9a648', '#f1444a']
-    xmax = len(x)
-
-    plt.figure(figsize=(12, 6))
-
-    plt.subplot(121)
-    d = 60
-    x0 = [60, 80, 90, 100, 120]
-    y0 = [(90 - d) / (220 - d), (120 - d) / (220 - d), (140 - d) / (220 - d), (160 - d) / (220 - d), 1]
-    plt.scatter(y2, y1, c='k', s=5, zorder=2)
-    plt.ylim(60, 220)
-    plt.xlim(40, 120)
-    for n, i in enumerate(colors):
-        plt.axvspan(0, x0[n], 0.0, y0[n], facecolor=i, zorder=-1 - 2 * n)
-        plt.axvspan(0, x0[n] + 0.96, 0.0, y0[n] + 0.008, facecolor='#FFFFFF', zorder=-1 - (2 * n + 1))
-
-    plt.subplot(122)
-    zones = [i * 100 / xmax for i in zones]
-    plt.bar(names, zones, width=0.6, color=colors)
-
-    return put_in_buffer()
+def separate_plot(x, y, low, high, edges, name):
+    # Plot lines
+    plt.plot(x, y, '#D3D3D3', zorder=1)
+    # points
+    scat = plt.scatter(
+        x, y, c=y, s=100,
+        cmap=get_cmap(high, low, edges, name),
+        norm=Normalize(vmin=low, vmax=high),
+        edgecolors='black', zorder=2
+    )
+    # Set colorbar and label right
+    cbar1 = plt.colorbar(scat)
+    cbar1.set_label(name)
 
 
 def paint_general(x, y1, y2):
 
     plt.figure(figsize=(12, 6))
-
-    # Plot lines
-    plt.plot(x, y1, '#D3D3D3', zorder=1)
-    plt.plot(x, y2, '#D3D3D3', zorder=1)
-
-    # Systolic points
-    one = plt.scatter(
-        x, y1, c=y1, s=50,
-        cmap=get_cmap(220, 40, edge_syst, 'one'),
-        norm=Normalize(vmin=40, vmax=220),
-        edgecolors='black', zorder=2
-    )
-    # Diastolic points
-    two = plt.scatter(
-        x, y2, c=y2, s=50,
-        cmap=get_cmap(120, 40, edge_diast, 'two'),
-        norm=Normalize(vmin=40, vmax=120),
-        edgecolors='black', zorder=2
-    )
-
-    # Set two colorbar right
-    cbar_1 = plt.colorbar(one)
-    cbar_1.set_label("systolic edges")
-    cbar_2 = plt.colorbar(two)
-    cbar_2.set_label("diastolic edges")
+    separate_plot(x, y1, 90, 220, edge_syst, "systolic edges")
+    separate_plot(x, y2, 60, 110, edge_diast, "diastolic edges")
 
     # Set axis limit
     plt.ylim(40, 220)
     plt.xlim(min(x).date(), (max(x) + timedelta(days=1)).date())
 
     ax = plt.gca()
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-    ax.xaxis.set_major_locator(mdates.DayLocator())
+    ax.xaxis.set_major_locator(mdates.AutoDateLocator())
     plt.grid(True)
     plt.gcf().autofmt_xdate()
 
@@ -104,8 +106,8 @@ def paint_general(x, y1, y2):
 
 
 def put_in_buffer():
+    """Put image in byte format on buffer"""
 
-    # Put graph in buffer
     buffer = io.BytesIO()
     plt.savefig(buffer, format='png')
     buffer.seek(0)
