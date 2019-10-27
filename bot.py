@@ -3,7 +3,7 @@ from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHa
 from telegram import ReplyKeyboardMarkup
 from datetime import datetime
 
-from graphs import paint_zones, paint_general
+from graphs import paint_zones, paint_general, paint_detail_graphs
 from backend import get_data, set_data
 
 """
@@ -28,7 +28,7 @@ markup = ReplyKeyboardMarkup(
 )
 
 CHOOSING, PRESSURE = range(2)
-list_graph = {'General': paint_general, 'Zones': paint_zones}
+list_graph = {'General': paint_general, 'Details': paint_detail_graphs, 'Zones': paint_zones}
 
 
 def split_message(text):
