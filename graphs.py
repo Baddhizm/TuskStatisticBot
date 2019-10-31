@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from matplotlib.gridspec import GridSpec
+import numpy as np
 import io
 from datetime import timedelta
 plt.switch_backend('Agg')
@@ -77,7 +78,7 @@ def get_cmap(high, low, edges, name):
 
 def separate_plot(x, y, low, high, edges, name):
     # Plot lines
-    plt.plot(x, y, '#D3D3D3', zorder=1)
+    plt.plot(x, y, '#D3D3D3', zorder=0)
     # points
     scat = plt.scatter(
         x, y, c=y, s=200/(len(x)**0.3),
@@ -92,6 +93,12 @@ def separate_plot(x, y, low, high, edges, name):
     # Set axis limit
     plt.ylim(low, high)
     plt.xlim(min(x).date(), (max(x) + timedelta(days=1)).date())
+
+    # Linear regression
+    x = mdates.date2num(x)
+    matrix = np.vstack([x, np.ones(len(x))]).T
+    k, b = np.linalg.lstsq(matrix, y, rcond=1)[0]
+    plt.plot(x, k * x + b, '#fc34ff', zorder=1, linewidth=0.8)
 
     ax = plt.gca()
     ax.xaxis.set_major_locator(mdates.AutoDateLocator())
