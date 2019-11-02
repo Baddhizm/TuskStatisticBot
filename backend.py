@@ -21,19 +21,15 @@ def get_data(chat_id):
     return error, x, y1, y2
 
 
-def set_data(measurement):
-    """
-    :param measurement:
-    :return:
-    """
+def set_data(measurements):
 
     error = False
     connection = sqlite3.connect('data.db')
     cursor = connection.cursor()
-    sql = "INSERT INTO measurements (id_chat, systolic, diastolic, date) VALUES (?, ?, ?, ?)"
+    sql = "INSERT INTO measurements (id_chat, systolic, diastolic, pulse, comment, date) VALUES (?, ?, ?, ?, ?, ?)"
 
     try:
-        cursor.execute(sql, tuple(measurement))
+        cursor.execute(sql, tuple(measurements))
     except Exception as e:
         error = f'{e}'
 
