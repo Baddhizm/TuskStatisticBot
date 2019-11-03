@@ -20,7 +20,7 @@ with open('configuration.json') as json_data_file:
     conf = json.load(json_data_file)
 
 
-reply_keyboard = [['Pressure', 'Graph']]
+reply_keyboard = [['Pressure', 'Graph', 'Rules']]
 markup = ReplyKeyboardMarkup(
     reply_keyboard,
     resize_keyboard=True,
@@ -36,8 +36,13 @@ def split_message(text):
     list_enter = text.split(' ')
     data = []
 
-    if len(list_enter) >= 4:
-        for n, value in enumerate(list_enter[:3]):
+    if len(list_enter) < 5:
+        list_enter.extend(['-'] * (5 - len(list_enter)))
+
+    if len(list_enter) >= 5:
+        if list_enter[0] in ['r', 'l']:
+            data.append(list_enter[0])
+        for n, value in enumerate(list_enter[1:4]):
             if value.isdigit() and edge_values[n][0] <= int(value) <= edge_values[n][1]:
                 data.append(value)
             elif n == 2 and value == '-':
@@ -47,7 +52,7 @@ def split_message(text):
                 data = []
                 break
         if data:
-            comment = ' '.join(list_enter[3:])
+            comment = ' '.join(list_enter[4:])
             if len(comment) <= 200 and text != ' ':
                 data.append(comment)
             else:
@@ -102,9 +107,9 @@ def graph(update, context):
             reply_markup=markup
         )
 
-        context.bot.send_photo(
+        context.bot.send_document(
             chat_id=chat_id,
-            photo=buffer
+            document=buffer
         )
 
     return CHOOSING
@@ -113,13 +118,7 @@ def graph(update, context):
 def enter_pressure(update, context):
 
     update.message.reply_text(
-        'Enter your arterial pressure in format:\n'
-        '   "systolic diastolic pulse comment".\n'
-        'If pulse or comment don\'t need for current measurement, write "-" on this place.\n'
-        'For example:\n'
-        '   1) 120 80 65 hello\n'
-        '   2) 120 80 - hello\n'
-        '   3) 120 80 - -\n'
+        'Enter your arterial pressure:'
     )
 
     return PRESSURE
@@ -154,6 +153,23 @@ def pressure(update, context):
     return CHOOSING
 
 
+def rules(update, context):
+
+    update.message.reply_text(
+        'Format for input arterial pressure:\n'
+        '   "r/l(right/left hand) systolic(40-220) diastolic(40-110) pulse(20-220) comment".\n'
+        'If you don\'t want enter pulse or comment write "-" on this place.\n'
+        'For example:\n'
+        '   1) r 120 80 65 hello\n'
+        '   2) l 120 80 - hello\n'
+        '   3) r 120 80 70\n'
+        '   4) l 120 80\n',
+        reply_markup=markup
+    )
+
+    return CHOOSING
+
+
 def end(update, context):
 
     update.message.reply_text(
@@ -176,7 +192,8 @@ def main():
         states={
             CHOOSING: [
                 MessageHandler(Filters.regex('^Pressure$'), enter_pressure),
-                MessageHandler(Filters.regex('^Graph$'), graph)
+                MessageHandler(Filters.regex('^Graph$'), graph),
+                MessageHandler(Filters.regex('^Rules$'), rules)
             ],
             PRESSURE: [MessageHandler(Filters.text, pressure)]
         },
