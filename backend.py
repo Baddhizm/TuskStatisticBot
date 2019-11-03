@@ -18,7 +18,7 @@ def get_data(chat_id):
 
     x = list(map(lambda y: datetime.strptime(y, "%Y-%m-%d %H:%M:%S.%f"), x))
 
-    return error, x, list(y1), y2, hand
+    return error, x, y1, y2, hand
 
 
 def set_data(measurements):
