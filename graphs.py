@@ -69,6 +69,8 @@ def paint_zones(x, y1, y2, hand):
     plt.tick_params(labelsize=8)
     zones = [i * 100 / x_max for i in zones]
     plt.bar(names_bar, zones, width=0.6, color=colors[1:], edgecolor='k')
+    for i, value in enumerate(zones):
+        plt.text(i, value, f'{value:.2f}%', ha='center', color='k', fontweight='bold')
     plt.ylabel('Percent, %')
     plt.xlabel('Categories')
     plt.title('Distribution measurements by categories')
@@ -88,7 +90,7 @@ def get_cmap(high, low, edges, name):
     return cmap
 
 
-def separate_plot(x, y, low, high, edges, name):
+def separate_plot(x, y, low, high, edges, name, c_reg='#fc34ff'):
     # Plot lines
     plt.plot(x, y, '#D3D3D3', zorder=0)
     # Points
@@ -111,12 +113,17 @@ def separate_plot(x, y, low, high, edges, name):
     matrix = np.vstack([x, np.ones(len(x))]).T
     k, b = np.linalg.lstsq(matrix, y, rcond=1)[0]
     sign = '+' if b >= 0 else '-'
-    plt.plot(x, k * x + b, '#fc34ff', zorder=1, linewidth=0.8, label=f'{k}x {sign} {abs(b)}')
+    avg_pressure = sum(y) / len(x)
+    plt.plot(
+        x, k * x + b, c_reg,
+        zorder=1, linewidth=0.8,
+        label=f'{k}x {sign} {abs(b)}\nAverage: {avg_pressure:.2f}'
+    )
 
     # Labels
-    plt.ylabel('Pressure, mmHg')
-    plt.xlabel('Date')
-    plt.title(f'{name} pressure')
+    plt.ylabel('Pressure, mmHg', style='italic', fontsize=14)
+    plt.xlabel('Date', style='italic', fontsize=14)
+    plt.title(f'{name} pressure', fontsize=16)
 
     ax = plt.gca()
     ax.xaxis.set_major_locator(mdates.AutoDateLocator())
@@ -129,22 +136,26 @@ def paint_general(x, y1, y2, hand):
 
     fig = plt.figure(figsize=(19.20, 10.80), dpi=100)
     separate_plot(x, y2, 40, 110, edge_diast, "Diastolic")
-    separate_plot(x, y1, 40, 220, edge_syst, "Systolic")
-    plt.text(
-        0.1, 0.08,
-        'Average pressure: {0:.2f}/{1:.2f}'.format(sum(y1) / len(x), sum(y2) / len(x)),
-        ha='left', va='center',
-        transform=fig.transFigure, style='italic',
-        fontsize=16
-    )
-    plt.title('Arterial pressure')
+    separate_plot(x, y1, 40, 220, edge_syst, "Systolic", c_reg='b')
+
+    plt.title('Arterial pressure', fontsize=16)
 
     return put_in_buffer()
 
 
+def detail_text(fig, x, y, difference):
+    plt.text(
+        x, y,
+        'Difference between the right and left hand: {0:.2f}'.format(difference),
+        ha='center', va='center',
+        transform=fig.transFigure, style='italic',
+        fontsize=16
+    )
+
+
 def paint_detail_graphs(*args):
 
-    x, y1, y2, hand = [list(a) for a in args]
+    x, y1, y2, hand = [list(reversed(a)) for a in args]
 
     fig = plt.figure(figsize=(19.20, 19.20), dpi=100)
     fig.suptitle("Pressure on the left and right hand", fontsize=24)
@@ -157,10 +168,8 @@ def paint_detail_graphs(*args):
         data['x'][h].append(x.pop())
         data['y1'][h].append(y1.pop())
         data['y2'][h].append(y2.pop())
-    else:
-        for key1, value1 in data.items():
-            for key2, value2 in value1.items():
-                data[key1][key2].reverse()
+
+    diff = {'r': [], 'l': []}
 
     for n, h in enumerate(['l', 'r']):
         fig.add_subplot(gs[0, n])
@@ -168,10 +177,18 @@ def paint_detail_graphs(*args):
         fig.add_subplot(gs[1, n])
         separate_plot(data['x'][h], data['y2'][h], 40, 110, edge_diast, "Diastolic")
         fig.add_subplot(gs[2, n])
+        diff[h] = list(map(lambda z: z[0] - z[1], zip(data['y1'][h], data['y2'][h])))
         separate_plot(
-            data['x'][h], list(map(lambda z: z[0] - z[1], zip(data['y1'][h], data['y2'][h]))),
+            data['x'][h], diff[h],
             10, 100, edge_difference, "Difference"
         )
+
+    def difference(right, left):
+        return abs((sum(right)/len(right)) - (sum(left)/len(left)))
+
+    detail_text(fig, 0.5, 0.91, difference(data['y1']['r'], data['y1']['l']))
+    detail_text(fig, 0.5, 0.655, difference(data['y2']['r'], data['y2']['l']))
+    detail_text(fig, 0.5, 0.4, difference(diff['r'], diff['l']))
 
     return put_in_buffer()
 
