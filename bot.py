@@ -20,14 +20,20 @@ with open('configuration.json') as json_data_file:
     conf = json.load(json_data_file)
 
 
-reply_keyboard = [['Pressure', 'Graph', 'Rules']]
+reply_keyboard = [['Pressure', 'Graph'], ['Rules', 'Data']]
 markup = ReplyKeyboardMarkup(
     reply_keyboard,
     resize_keyboard=True,
     one_time_keyboard=True
 )
 
-CHOOSING, PRESSURE = range(2)
+file_format = ReplyKeyboardMarkup(
+    [['json', 'csv']],
+    resize_keyboard=True,
+    one_time_keyboard=True
+)
+
+CHOOSING, PRESSURE, CHOOSING_FORMAT = range(3)
 list_graph = {'General': paint_general, 'Details': paint_detail_graphs, 'Zones': paint_zones}
 
 
@@ -77,19 +83,22 @@ def start(update, context):
 def graph(update, context):
 
     chat_id = update.message['chat']['id']
-
-    error, *data = get_data(chat_id)
-
-    if len(data[1]) < 7:
-        update.message.reply_text(
-            'You need more measurements (more than 7).',
-            reply_markup=markup
-        )
-        return CHOOSING
+    error, data = get_data(chat_id)
 
     if error:
         update.message.reply_text(
             'Error: {0}'.format(error)
+        )
+        return CHOOSING
+
+    y1, y2, x, hand = zip(*data)
+
+    x = list(map(lambda y: datetime.strptime(y, "%Y-%m-%d %H:%M:%S.%f"), x))
+
+    if len(x) < 7:
+        update.message.reply_text(
+            'You need more measurements (more than 7).',
+            reply_markup=markup
         )
         return CHOOSING
 
@@ -100,7 +109,7 @@ def graph(update, context):
 
     for name, func in list_graph.items():
 
-        buffer = func(*data)
+        buffer = func(x, y1, y2, hand)
 
         update.message.reply_text(
             f"{name}: ",
@@ -153,6 +162,52 @@ def pressure(update, context):
     return CHOOSING
 
 
+def choosing_format(update, context):
+
+    update.message.reply_text(
+        'Choose format:',
+        reply_markup=file_format
+    )
+
+    return CHOOSING_FORMAT
+
+
+def datafile(update, context):
+
+    import io
+    import pandas as pd
+
+    choice = update.message['text']
+    choice = choice if choice in ['json', 'csv'] else 'csv'
+
+    chat_id = update.message['chat']['id']
+    error, data = get_data(chat_id, 'a')
+
+    if error:
+        update.message.reply_text(
+            'Error: {0}'.format(error)
+        )
+        return CHOOSING
+
+    buffer = io.StringIO()
+    df = pd.DataFrame(data=data)
+    eval(f'df.to_{choice}(buffer)')
+    buffer.seek(0)
+
+    update.message.reply_text(
+        'Your data:',
+        reply_markup=markup
+    )
+
+    context.bot.send_document(
+        chat_id=chat_id,
+        document=io.BytesIO(buffer.read().encode('utf8')),
+        filename=f'data.{choice}'
+    )
+
+    return CHOOSING
+
+
 def rules(update, context):
 
     update.message.reply_text(
@@ -193,9 +248,14 @@ def main():
             CHOOSING: [
                 MessageHandler(Filters.regex('^Pressure$'), enter_pressure),
                 MessageHandler(Filters.regex('^Graph$'), graph),
+                MessageHandler(Filters.regex('^Data$'), choosing_format),
                 MessageHandler(Filters.regex('^Rules$'), rules)
             ],
-            PRESSURE: [MessageHandler(Filters.text, pressure)]
+            PRESSURE: [MessageHandler(Filters.text, pressure)],
+            CHOOSING_FORMAT: [
+                MessageHandler(Filters.regex('^csv$'), datafile),
+                MessageHandler(Filters.regex('^json$'), datafile),
+            ],
         },
         fallbacks=[CommandHandler('end', end)]
     )

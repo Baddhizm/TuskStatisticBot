@@ -1,24 +1,23 @@
 import sqlite3
-from datetime import datetime
 
 
-def get_data(chat_id):
+def get_data(chat_id, type_get='g'):
 
     error = False
     connection = sqlite3.connect('data.db')
     cursor = connection.cursor()
-    sql = "SELECT systolic, diastolic, date, hand FROM measurements WHERE id_chat = ? ORDER BY id;"
+    if type_get == 'g':
+        sql = "SELECT systolic, diastolic, date, hand FROM measurements WHERE id_chat = ? ORDER BY id;"
+    elif type_get == 'a':
+        sql = "SELECT * FROM measurements WHERE id_chat = ? ORDER BY id;"
     try:
         cursor.execute(sql, (chat_id,))
     except Exception as e:
         error = f'{e}'
-
-    y1, y2, x, hand = zip(*cursor)
+    data = list(cursor)
     cursor.close()
 
-    x = list(map(lambda y: datetime.strptime(y, "%Y-%m-%d %H:%M:%S.%f"), x))
-
-    return error, x, y1, y2, hand
+    return error, data
 
 
 def set_data(measurements):
