@@ -1,6 +1,7 @@
 import json
 from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHandler, Filters
 from telegram import ReplyKeyboardMarkup
+from telegram.ext.dispatcher import run_async
 from datetime import datetime
 
 from graphs import paint_zones, paint_general, paint_detail_graphs
@@ -67,6 +68,7 @@ def split_message(text):
     return data
 
 
+@run_async
 def start(update, context):
     update.message.reply_text(
         "Hello. I'm statistic bot. \n"
@@ -80,6 +82,7 @@ def start(update, context):
     return CHOOSING
 
 
+@run_async
 def graph(update, context):
 
     chat_id = update.message['chat']['id']
@@ -124,6 +127,7 @@ def graph(update, context):
     return CHOOSING
 
 
+@run_async
 def enter_pressure(update, context):
 
     update.message.reply_text(
@@ -133,6 +137,7 @@ def enter_pressure(update, context):
     return PRESSURE
 
 
+@run_async
 def pressure(update, context):
 
     measurements = [update.message['chat']['id']]
@@ -162,6 +167,7 @@ def pressure(update, context):
     return CHOOSING
 
 
+@run_async
 def choosing_format(update, context):
 
     update.message.reply_text(
@@ -172,6 +178,7 @@ def choosing_format(update, context):
     return CHOOSING_FORMAT
 
 
+@run_async
 def datafile(update, context):
 
     import io
@@ -208,6 +215,7 @@ def datafile(update, context):
     return CHOOSING
 
 
+@run_async
 def rules(update, context):
 
     update.message.reply_text(
@@ -225,6 +233,7 @@ def rules(update, context):
     return CHOOSING
 
 
+@run_async
 def end(update, context):
 
     update.message.reply_text(
