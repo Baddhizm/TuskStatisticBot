@@ -96,7 +96,7 @@ def graph(update, context):
 
     y1, y2, x, hand = zip(*data)
 
-    x = list(map(lambda y: datetime.strptime(y, "%Y-%m-%d %H:%M:%S.%f"), x))
+    # x = list(map(lambda y: datetime.strptime(y, "%Y-%m-%d %H:%M:%S.%f"), x))
 
     if len(x) < 7:
         update.message.reply_text(
@@ -150,6 +150,7 @@ def pressure(update, context):
             reply_markup=markup
         )
         return CHOOSING
+
     measurements.append(datetime.now())
     error = set_data(measurements)
 
@@ -220,7 +221,7 @@ def rules(update, context):
 
     update.message.reply_text(
         'Format for input arterial pressure:\n'
-        '   "r/l(right/left hand) systolic(40-220) diastolic(40-110) pulse(20-220) comment".\n'
+        '   "r/l (right/left hand) systolic(40-220) diastolic(40-110) pulse(20-220) comment".\n'
         'If you don\'t want enter pulse or comment write "-" on this place.\n'
         'For example:\n'
         '   1) r 120 80 65 hello\n'
