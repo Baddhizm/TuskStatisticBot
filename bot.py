@@ -3,6 +3,7 @@ from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHa
 from telegram import ReplyKeyboardMarkup
 from telegram.ext.dispatcher import run_async
 from datetime import datetime
+import pytz
 
 from graphs import paint_zones, paint_general, paint_detail_graphs
 from backend import get_data, set_data
@@ -151,7 +152,7 @@ def pressure(update, context):
         )
         return CHOOSING
 
-    measurements.append(datetime.now())
+    measurements.append(datetime.now(pytz.timezone('Europe/Moscow')))
     error = set_data(measurements)
 
     if error:
