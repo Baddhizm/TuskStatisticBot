@@ -4,6 +4,7 @@ from telegram import ReplyKeyboardMarkup
 from telegram.ext.dispatcher import run_async
 from datetime import datetime
 import pytz
+import os
 
 from graphs import paint_zones, paint_general, paint_detail_graphs
 from backend import get_data, set_data
@@ -18,8 +19,8 @@ Template, for example:
     }
 }
 """
-with open('configuration.json') as json_data_file:
-    conf = json.load(json_data_file)
+# with open('configuration.json') as json_data_file:
+#     conf = json.load(json_data_file)
 
 
 reply_keyboard = [['Pressure', 'Graph'], ['Rules', 'Data']]
@@ -247,8 +248,8 @@ def end(update, context):
 
 def main():
     updater = Updater(
-        conf['TOKEN'],
-        request_kwargs=conf['REQUEST_KWARGS'],
+        os.environ['TOKEN'],
+        # request_kwargs=os.environ['REQUEST_KWARGS'],
         use_context=True
     )
     dp = updater.dispatcher
