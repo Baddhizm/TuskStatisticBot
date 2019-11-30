@@ -93,7 +93,7 @@ def graph(update, context):
         return CHOOSING
 
     y1, y2, x, hand = zip(*data)
-    x = [i.replace(tzinfo=pytz.utc).astimezone(os.environ['TZ']) for i in x]
+    x = [i.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(os.environ['TZ'])) for i in x]
     print(x)
 
     if len(x) < 7:
