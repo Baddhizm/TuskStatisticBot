@@ -147,7 +147,7 @@ def pressure(update, context):
         )
         return CHOOSING
 
-    measurements.append(datetime.now(pytz.timezone('Europe/Moscow')))
+    measurements.append(datetime.now(pytz.timezone(os.environ['TZ'])))
     error = set_data(measurements)
 
     if error:
@@ -243,7 +243,6 @@ def end(update, context):
 def main():
     updater = Updater(
         os.environ['TOKEN'],
-        # request_kwargs=os.environ['REQUEST_KWARGS'],
         use_context=True
     )
     dp = updater.dispatcher
