@@ -51,7 +51,7 @@ def split_message(text):
             if value.isdigit() and edge_values[n][0] <= int(value) <= edge_values[n][1]:
                 data.append(value)
             elif n == 2 and value == '-':
-                if len(data) == 2:
+                if len(data) == 3:
                     data.append(None)
             else:
                 data = []
