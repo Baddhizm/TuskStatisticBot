@@ -93,8 +93,6 @@ def graph(update, context):
         return CHOOSING
 
     y1, y2, x, hand = zip(*data)
-    x = [i.replace(tzinfo=pytz.utc).astimezone(pytz.timezone(os.environ['TZ'])) for i in x]
-    print(x)
 
     if len(x) < 7:
         update.message.reply_text(
@@ -149,7 +147,7 @@ def pressure(update, context):
         )
         return CHOOSING
 
-    measurements.append(datetime.now())
+    measurements.append(datetime.now(pytz.timezone(os.environ['TZ'])))
     error = set_data(measurements)
 
     if error:

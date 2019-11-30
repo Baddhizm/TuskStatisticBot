@@ -16,6 +16,7 @@ def get_data(chat_id, type_get='g'):
     try:
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         cur = conn.cursor()
+        cur.execute("SET time_zone = 'Europa/Moscow';")
         cur.execute(sql, (chat_id,))
         measurements = list(cur)
         cur.close()
