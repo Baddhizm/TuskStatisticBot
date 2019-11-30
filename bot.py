@@ -1,4 +1,3 @@
-import json
 from telegram.ext import Updater, CommandHandler, ConversationHandler, MessageHandler, Filters
 from telegram import ReplyKeyboardMarkup
 from telegram.ext.dispatcher import run_async
@@ -19,9 +18,6 @@ Template, for example:
     }
 }
 """
-# with open('configuration.json') as json_data_file:
-#     conf = json.load(json_data_file)
-
 
 reply_keyboard = [['Pressure', 'Graph'], ['Rules', 'Data']]
 markup = ReplyKeyboardMarkup(
@@ -97,8 +93,6 @@ def graph(update, context):
         return CHOOSING
 
     y1, y2, x, hand = zip(*data)
-
-    # x = list(map(lambda y: datetime.strptime(y, "%Y-%m-%d %H:%M:%S.%f"), x))
 
     if len(x) < 7:
         update.message.reply_text(

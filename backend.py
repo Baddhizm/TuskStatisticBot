@@ -1,5 +1,7 @@
 import psycopg2
-import json
+import os
+
+DATABASE_URL = os.environ['DATABASE_URL']
 
 
 def get_data(chat_id, type_get='g'):
@@ -12,9 +14,7 @@ def get_data(chat_id, type_get='g'):
 
     conn = None
     try:
-        with open('db.json') as json_data_file:
-            params = json.load(json_data_file)
-        conn = psycopg2.connect(**params)
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         cur = conn.cursor()
         cur.execute(sql, (chat_id,))
         measurements = list(cur)
@@ -38,9 +38,7 @@ def set_data(measurements):
 
     conn = None
     try:
-        with open('db.json') as json_data_file:
-            params = json.load(json_data_file)
-        conn = psycopg2.connect(**params)
+        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         cur = conn.cursor()
         cur.execute(sql, measurements)
         cur.close()
