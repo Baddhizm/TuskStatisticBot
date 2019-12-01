@@ -6,6 +6,9 @@ data.db
 # create database
 create_db.py
 
+# insert my data
+insert_my_data.py
+
 # configuration
 configuration.json
 db.json
