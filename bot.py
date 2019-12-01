@@ -93,7 +93,6 @@ def graph(update, context):
         return CHOOSING
 
     y1, y2, x, hand = zip(*data)
-    print(x)
 
     if len(x) < 7:
         update.message.reply_text(
