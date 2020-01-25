@@ -1,30 +1,34 @@
+from typing import Tuple, Union, List
+
 import psycopg2
 import os
+
+from sqlalchemy.exc import DatabaseError
+
+from db import Session
+from db.modles import Measurement
 
 DATABASE_URL = os.environ['DATABASE_URL']
 
 
-def get_data(chat_id, type_get='g'):
+def get_data(chat_id: str, type_get='g') -> Tuple[Union[bool, str], List]:
 
     error = False
     measurements = []
-    sql = "SELECT systolic, diastolic, date, hand FROM measurements WHERE chat_id = %s ORDER BY id;"
-    if type_get == 'a':
-        sql = "SELECT * FROM measurements WHERE chat_id = %s ORDER BY id;"
-
-    conn = None
+    session = Session()
     try:
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        cur = conn.cursor()
-        cur.execute(sql, (chat_id,))
-        measurements = list(cur)
-        cur.close()
-        conn.commit()
-    except (Exception, psycopg2.DatabaseError) as e:
+        measurements = session.query(
+            Measurement.systolic,
+            Measurement.diastolic,
+            Measurement.date,
+            Measurement.hand
+        ).filter_by(chat_id=chat_id).order_by(Measurement.id)
+        if type_get == 'a':
+            measurements = session.query(Measurement).filter_by(chat_id=chat_id).order_by(Measurement.id)
+    except (Exception, DatabaseError) as e:
         error = f'{e}'
     finally:
-        if conn is not None:
-            conn.close()
+        session.close()
 
     return error, measurements
 
