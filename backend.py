@@ -1,18 +1,12 @@
 from typing import Tuple, Union, List
 
-import psycopg2
-import os
-
 from sqlalchemy.exc import DatabaseError
 
 from db import Session
 from db.modles import Measurement
 
-DATABASE_URL = os.environ['DATABASE_URL']
 
-
-def get_data(chat_id: str, type_get='g') -> Tuple[Union[bool, str], List]:
-
+def get_data(chat_id: int, type_get='g') -> Tuple[Union[bool, str], List[Measurement]]:
     error = False
     measurements = []
     session = Session()
@@ -22,9 +16,9 @@ def get_data(chat_id: str, type_get='g') -> Tuple[Union[bool, str], List]:
             Measurement.diastolic,
             Measurement.date,
             Measurement.hand
-        ).filter_by(chat_id=chat_id).order_by(Measurement.id)
+        ).filter_by(chat_id=chat_id).order_by(Measurement.id).all()
         if type_get == 'a':
-            measurements = session.query(Measurement).filter_by(chat_id=chat_id).order_by(Measurement.id)
+            measurements = session.query(Measurement).filter_by(chat_id=chat_id).order_by(Measurement.id).all()
     except (Exception, DatabaseError) as e:
         error = f'{e}'
     finally:
@@ -33,26 +27,27 @@ def get_data(chat_id: str, type_get='g') -> Tuple[Union[bool, str], List]:
     return error, measurements
 
 
-def set_data(measurements):
-
+def set_data(measurements: list):
     error = False
-    sql = """INSERT INTO measurements 
-    (chat_id, hand, systolic, diastolic, pulse, comment, date) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s)"""
-
-    conn = None
+    chat_id, hand, systolic, diastolic, pulse, comment, date = measurements
+    session = Session()
     try:
-        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        cur = conn.cursor()
-        cur.execute("SET TIME ZONE 'Europe/Moscow';")
-        cur.execute(sql, measurements)
-        cur.close()
-        conn.commit()
-    except (Exception, psycopg2.DatabaseError) as e:
+        measurement = Measurement(
+            chat_id=chat_id,
+            hand=hand,
+            systolic=systolic,
+            diastolic=diastolic,
+            pulse=pulse,
+            comment=comment,
+            date=date
+        )
+        session.add(measurement)
+        session.commit()
+        session.close()
+    except (Exception, DatabaseError) as e:
         error = f'{e}'
     finally:
-        if conn is not None:
-            conn.close()
+        session.close()
 
     return error
 
